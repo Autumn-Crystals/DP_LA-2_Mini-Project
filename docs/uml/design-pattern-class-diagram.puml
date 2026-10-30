@@ -1,0 +1,192 @@
+@startuml
+skinparam handwritten false
+skinparam monochrome false
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam roundcorner 6
+
+title Smart Campus Complaint & Maintenance System - GoF Design Patterns
+
+' ==============================================================================
+' 1. BUILDER PATTERN
+' ==============================================================================
+package "designpatterns.builder" #LightCyan {
+    class ComplaintBuilder {
+        -id: int
+        -title: String
+        -description: String
+        -category: ComplaintCategory
+        -location: String
+        -priority: Priority
+        -reporterId: int
+        +title(t: String): ComplaintBuilder
+        +description(d: String): ComplaintBuilder
+        +category(c: ComplaintCategory): ComplaintBuilder
+        +location(l: String): ComplaintBuilder
+        +priority(p: Priority): ComplaintBuilder
+        +reporterId(id: int): ComplaintBuilder
+        +build(): Complaint
+    }
+}
+
+' ==============================================================================
+' 2. PROTOTYPE PATTERN
+' ==============================================================================
+package "designpatterns.prototype" #LightGreen {
+    interface ComplaintPrototype {
+        +deepCopy(): Complaint
+    }
+
+    class ComplaintCloner {
+        +{static} cloneComplaint(original: Complaint): Complaint
+        +{static} cloneWithLocation(original: Complaint, loc: String): Complaint
+    }
+}
+
+' ==============================================================================
+' 3. STRATEGY PATTERN
+' ==============================================================================
+package "designpatterns.strategy" #LightYellow {
+    interface StaffAssignmentStrategy {
+        +assign(c: Complaint, staff: List<MaintenanceStaff>): Optional<MaintenanceStaff>
+        +getStrategyName(): String
+    }
+
+    class LeastLoadedStaffStrategy implements StaffAssignmentStrategy {
+        +assign(...)
+    }
+
+    class SkillBasedAssignmentStrategy implements StaffAssignmentStrategy {
+        +assign(...)
+    }
+
+    class RoundRobinAssignmentStrategy implements StaffAssignmentStrategy {
+        -index: AtomicInteger
+        +assign(...)
+    }
+}
+
+' ==============================================================================
+' 4. TEMPLATE METHOD PATTERN
+' ==============================================================================
+package "designpatterns.template" #LightPink {
+    abstract class ComplaintWorkflow {
+        +processComplaint(c: Complaint, notes: String, userId: int) <<final>>
+        #{abstract} validateEligibility(c: Complaint)
+        #{abstract} executeResolution(c: Complaint, notes: String)
+        #updateComplaintState(...)
+        #{abstract} notifyParties(c: Complaint)
+        #{abstract} logWorkflowAudit(c: Complaint, userId: int)
+    }
+
+    class GeneralMaintenanceWorkflow extends ComplaintWorkflow {
+        #validateEligibility(...)
+        #executeResolution(...)
+        #notifyParties(...)
+        #logWorkflowAudit(...)
+    }
+
+    class ITSupportWorkflow extends ComplaintWorkflow {
+        #validateEligibility(...)
+        #executeResolution(...)
+        #notifyParties(...)
+        #logWorkflowAudit(...)
+    }
+}
+
+' ==============================================================================
+' 5. MEMENTO PATTERN
+' ==============================================================================
+package "designpatterns.memento" #Lavender {
+    class ComplaintMemento <<immutable>> {
+        -complaintId: int
+        -status: ComplaintStatus
+        -assignedStaffId: Integer
+        -description: String
+        -resolutionNotes: String
+        -changedByUserId: int
+        -actionLabel: String
+        -timestamp: LocalDateTime
+        +getStatus(): ComplaintStatus
+        +getAssignedStaffId(): Integer
+    }
+
+    class ComplaintHistory <<Caretaker>> {
+        -historyStack: Deque<ComplaintMemento>
+        +push(m: ComplaintMemento)
+        +pop(): ComplaintMemento
+        +peek(): ComplaintMemento
+        +canUndo(): boolean
+        +size(): int
+    }
+}
+
+' ==============================================================================
+' 6. MEDIATOR PATTERN
+' ==============================================================================
+package "designpatterns.mediator" #Wheat {
+    interface ComplaintMediator {
+        +onComplaintSubmitted(c: Complaint)
+        +onComplaintStatusChanged(c: Complaint)
+        +onStaffAssigned(c: Complaint, s: MaintenanceStaff)
+        +onUndoPerformed(c: Complaint)
+        +showNotification(msg: String, type: NotificationType)
+    }
+
+    class ComplaintMediatorImpl implements ComplaintMediator {
+        -mainFrame: MainFrame
+        -complaintManagementView: ComplaintManagementView
+        -adminDashboardView: AdminDashboardView
+        -studentDashboardView: StudentDashboardView
+        -detailsView: ComplaintDetailsView
+        -complaintService: ComplaintService
+        +onComplaintSubmitted(...)
+        +onComplaintStatusChanged(...)
+        +onStaffAssigned(...)
+        +onUndoPerformed(...)
+        +refreshDashboard()
+        +refreshComplaintList()
+    }
+}
+
+' ==============================================================================
+' DOMAIN MODEL & SERVICE COORDINATION
+' ==============================================================================
+package "model" {
+    class Complaint implements ComplaintPrototype {
+        -id: int
+        -title: String
+        -description: String
+        -category: ComplaintCategory
+        -status: ComplaintStatus
+        -priority: Priority
+        -assignedStaffId: Integer
+        +deepCopy(): Complaint
+    }
+}
+
+package "service" {
+    class ComplaintService {
+        -complaintDAO: ComplaintDAO
+        -staffDAO: MaintenanceStaffDAO
+        -assignmentStrategy: StaffAssignmentStrategy
+        -historyMap: Map<Integer, ComplaintHistory>
+        +submitComplaint(...): Complaint
+        +duplicateComplaint(id: int): Complaint
+        +autoAssignStaff(...): Optional<MaintenanceStaff>
+        +resolveComplaint(...)
+        +undoLastChange(...): boolean
+    }
+}
+
+' Inter-Pattern & Architecture Connections
+ComplaintBuilder ..> Complaint : creates
+ComplaintCloner ..> ComplaintPrototype : clones
+ComplaintService o-- StaffAssignmentStrategy : uses
+ComplaintService o-- ComplaintWorkflow : executes
+ComplaintService o-- ComplaintHistory : caretakes
+ComplaintHistory o-- ComplaintMemento : stores
+ComplaintMediatorImpl o-- ComplaintService : coordinates
+
+@enduml

@@ -1,0 +1,15 @@
+target/
+*.class
+*.jar
+*.war
+.env
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates

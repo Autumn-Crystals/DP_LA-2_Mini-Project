@@ -1,0 +1,7 @@
+# Application Properties Example
+# Copy to src/main/resources/application.properties
+
+app.name=Smart Campus Complaint System
+app.version=1.0.0
+app.window.width=1280
+app.window.height=800

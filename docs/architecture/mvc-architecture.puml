@@ -1,0 +1,169 @@
+@startuml
+skinparam handwritten false
+skinparam monochrome false
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam roundcorner 8
+
+title Smart Campus Complaint & Maintenance System - MVC Architecture
+
+package "mvc.view" {
+    class LoginView {
+        +getEmail(): String
+        +getPassword(): String
+        +setErrorMessage(msg: String)
+        +addLoginListener(listener: ActionListener)
+    }
+
+    class MainFrame {
+        +buildSidebarForUser(user: User, ...)
+        +addView(name: String, comp: JComponent)
+        +showView(name: String)
+        +showNotification(msg: String, type: NotificationType)
+    }
+
+    class StudentDashboardView {
+        +updateStats(counts: Map)
+        +addSubmitListener(l: ActionListener)
+        +addViewAllListener(l: ActionListener)
+    }
+
+    class AdminDashboardView {
+        +updateStats(counts: Map)
+        +addManageListener(l: ActionListener)
+        +addStaffListener(l: ActionListener)
+    }
+
+    class ComplaintManagementView {
+        +loadComplaints(list: List<Complaint>)
+        +getSearchQuery(): String
+        +getSelectedStatus(): ComplaintStatus
+        +setOnViewListener(l: ActionListener)
+        +setOnDuplicateListener(l: ActionListener)
+    }
+
+    class ComplaintDetailsView {
+        +loadComplaint(c: Complaint, rep: String, staff: String)
+        +addAssignListener(l: ActionListener)
+        +addResolveListener(l: ActionListener)
+        +addUndoListener(l: ActionListener)
+    }
+
+    class ComplaintFormView {
+        +getComplaintTitle(): String
+        +getDescription(): String
+        +getComplaintLocation(): String
+        +getCategory(): ComplaintCategory
+        +getPriority(): Priority
+        +prefill(...)
+        +clearForm()
+    }
+}
+
+package "mvc.controller" {
+    class LoginController {
+        -view: LoginView
+        -authService: AuthenticationService
+        -mainFrame: MainFrame
+        +handleLogin()
+    }
+
+    class ComplaintController {
+        -complaintService: ComplaintService
+        -staffService: StaffService
+        -mediator: ComplaintMediatorImpl
+        -listView: ComplaintManagementView
+        -detailsView: ComplaintDetailsView
+        -formView: ComplaintFormView
+        +refreshList()
+        +handleSubmit()
+        +duplicateComplaint(c: Complaint)
+        +handleAutoAssign()
+        +handleResolve()
+        +handleUndo()
+    }
+
+    class DashboardController {
+        -dashboardService: DashboardService
+        -authService: AuthenticationService
+        -studentView: StudentDashboardView
+        -adminView: AdminDashboardView
+        +refreshDashboard()
+    }
+
+    class StaffController {
+        -staffService: StaffService
+        -view: StaffManagementView
+        +refreshList()
+        +showAddDialog()
+        +showEditDialog(staff: MaintenanceStaff)
+    }
+}
+
+package "service" {
+    class AuthenticationService {
+        +login(email: String, pass: String): Optional<User>
+        +logout()
+        +getCurrentUser(): User
+    }
+
+    class ComplaintService {
+        +submitComplaint(...): Complaint
+        +duplicateComplaint(id: int): Complaint
+        +autoAssignStaff(...): Optional<MaintenanceStaff>
+        +resolveComplaint(...)
+        +undoLastChange(...): boolean
+    }
+
+    class StaffAssignmentService {
+        +setStrategy(s: StaffAssignmentStrategy)
+        +assignStaff(c: Complaint): Optional<MaintenanceStaff>
+    }
+
+    class DashboardService {
+        +getStudentStats(id: int): Map
+        +getAdminStats(): Map
+    }
+}
+
+package "model" {
+    class Complaint {
+        -id: int
+        -title: String
+        -category: ComplaintCategory
+        -status: ComplaintStatus
+        -priority: Priority
+        +deepCopy(): Complaint
+    }
+
+    class User {
+        -id: int
+        -name: String
+        -email: String
+        -role: UserRole
+    }
+
+    class MaintenanceStaff {
+        -id: int
+        -name: String
+        -activeComplaintCount: int
+        -skills: List<ComplaintCategory>
+    }
+}
+
+' Relationships
+LoginController --> LoginView : listens & updates
+LoginController --> AuthenticationService : authenticates
+ComplaintController --> ComplaintManagementView : controls
+ComplaintController --> ComplaintDetailsView : controls
+ComplaintController --> ComplaintFormView : controls
+ComplaintController --> ComplaintService : delegates
+DashboardController --> DashboardService : computes stats
+DashboardController --> StudentDashboardView : updates
+DashboardController --> AdminDashboardView : updates
+
+ComplaintService ..> Complaint : creates & manipulates
+ComplaintService ..> MaintenanceStaff : assigns
+
+@enduml
